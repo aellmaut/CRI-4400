@@ -207,7 +207,7 @@ def launchAmplifierSetup(gui, interrogator, launchEDFAcurr, firstChann, lastChan
         gui.progressBar.step(0.005)
         gui.update()
         print('Optical Backscatter Energy: ' + str(IQrad_arr[-1]))
-        # Exit while loop if IQ radius rms value over last 200 channls is below the rms value of 15 iterations earlier
+        # Exit while loop if IQ radius rms value over last 200 channels is below the rms value of 15 iterations earlier
         if (len(IQrad_arr) > 15 and IQrad_arr[-1] < IQrad_arr[-16]) or launchEDFAcurr == 1300:
             success = 1
             plt.plot(launchEDFAcurr_arr, IQrad_arr, 'x-')
@@ -343,7 +343,7 @@ def detectSensingFiberRegions(gui, interrogator):
     laserNum = 3 # 1 = laser 1; 2 = laser 2; 3 = laser 1 & 2
     firstChann = 1
     ind = [x for x in range(len(gui.InterrogatorHandle.dict_ts2fs)) if gui.InterrogatorHandle.dict_ts2fs[x][1] == gui.InterrogatorHandle.fs]
-    lastChann = gui.InterrogatorHandle.dict_ts2fs[ind[0]][0] + 50 # Last channel is set to maximum permissible value for current DAS sampling frequency plus 50. This ensure that at least 50 channels at the end do not show any optical activity.
+    lastChann = gui.InterrogatorHandle.dict_ts2fs[ind[0]][0] - 50 # Subtract guard band of 50 channels from maximum DAS channel number
     recLen = 0.1 # Record length in seconds
     fiberSensingRegion = []
     fiberSensingRegionClean = []
@@ -559,39 +559,39 @@ def IQImbalanceCorrection(gui):
 
 # Find optimal DAS sampling frequency based on DAS sensing channel range
 def optimizeDASfs(gui):
+    
+    guardBand = 100 # Channels added to the last physical DAS sensing fiber channel
 
     print('Optimizing DAS sampling frequency ... ', end='')
     gui.textWindow.insert(tk.END, 'Optimizing DAS sampling frequency ... ')
 
-    # Remote Circulator Case
+    # Remote Circulator Case (currently only supports 2 sensing fiber)
     if len(gui.fiberSensingRegions) > 1:
-
-        # Get maximum DAS pulse repetition rate
-        sumSensingChanns = (gui.fiberSensingRegions[0][1]-gui.fiberSensingRegions[0][0]+1) + (gui.fiberSensingRegions[-1][1]-gui.fiberSensingRegions[1][0]+1)
-        maxPulseRepRate = getTs(gui, sumSensingChanns,1)
-
-        # Calculate upper limit of light pulses that can traverse the fiber at the same time
-        maxNumPulses = int(gui.fiberSensingRegions[-1][1]/maxPulseRepRate)
-
-        # Optimize DAS pulse repetition rate
+        
+        # Determine number of DAS channels contained in the 2nd (downhole) sensing fiber region
+        sumChannsSecondSensingRegion = gui.fiberSensingRegions[-1][1]-gui.fiberSensingRegions[-1][0]+1
+        # Set initial pulse reptition interval to 0.625 ms a.k.a 1.6 kHz 
+        minPulseRepRate = gui.InterrogatorHandle.dict_ts2fs[-1][0]
         success = 0
-        while success == 0:
-            minPulseRepRate = getTs(gui, (gui.fiberSensingRegions[-1][1] - gui.fiberSensingRegions[0][0])/(maxNumPulses+1), 1)
-            if maxNumPulses > 0:
-                maxPulseRepRate = getTs(gui, (gui.fiberSensingRegions[1][0] - gui.fiberSensingRegions[0][1])/maxNumPulses, 0)
-            else:
-                maxPulseRepRate = minPulseRepRate
-            
-            if maxPulseRepRate >= minPulseRepRate:
+        i = 0
+        # Determine the highest pulse repetition rate such that:
+        # 1) No overlap occurs between the two sensing regions
+        # 2) The last DAS channel of the 2nd sensing fiber region does not exceed the maximum allowable DAS channel for the pulse repetitoin rate under test
+        while success == 0 and i < len(gui.InterrogatorHandle.dict_ts2fs):
+            # Determine new start and end channels of 2nd sensing region for pulse repetiton rate under test
+            startChann = gui.fiberSensingRegions[-1][0] % gui.InterrogatorHandle.dict_ts2fs[i][0]
+            endChann = startChann + sumChannsSecondSensingRegion
+            # Check whether conditions 1) and 2) are met
+            if (startChann > gui.fiberSensingRegions[0][1]) and ((endChann+guardBand) < gui.InterrogatorHandle.dict_ts2fs[i][0]):
                 success = 1
-            else:
-                maxNumPulses = maxNumPulses - 1
+                minPulseRepRate =  gui.InterrogatorHandle.dict_ts2fs[i][0]
+            i=i+1
 
     # Continuous Sensing Fiber Case
     elif len(gui.fiberSensingRegions) == 1:
-        # Get maximum DAS pulse repetition rate
-        sumSensingChanns = (gui.fiberSensingRegions[0][1]-gui.fiberSensingRegions[0][0]+1)
-        minPulseRepRate = getTs(gui, sumSensingChanns,1)
+        ind = [x for x in range(len(gui.InterrogatorHandle.dict_ts2fs)) if gui.InterrogatorHandle.dict_ts2fs[x][0] > gui.fiberSensingRegions[0][1]+100]
+        minPulseRepRate = gui.InterrogatorHandle.dict_ts2fs[ind[0]][0]
+
         
     for i in range(len(gui.InterrogatorHandle.dict_ts2fs)):
         if gui.InterrogatorHandle.dict_ts2fs[i][0] == minPulseRepRate:
@@ -603,22 +603,6 @@ def optimizeDASfs(gui):
 
     return(fs)
 
-# Get DAS pulse repetition rate as a function of the number of DAS sensing channels
-def getTs(gui, chann, flag):
-
-    # Get lower DAS pulse repetition rate
-    if flag == 0:
-        ind = [x for x in range(len(gui.InterrogatorHandle.dict_ts2fs)) if (gui.InterrogatorHandle.dict_ts2fs[x][0] - chann) < 0]
-        if not ind:
-            ts = 0
-        else:
-            ts = gui.InterrogatorHandle.dict_ts2fs[ind[-1]][0]
-    # Get higher DAS pulse repetition rate    
-    elif flag == 1:
-        ind = [x for x in range(len(gui.InterrogatorHandle.dict_ts2fs)) if (gui.InterrogatorHandle.dict_ts2fs[x][0] - chann) > 0]
-        ts = gui.InterrogatorHandle.dict_ts2fs[ind[0]][0]
-
-    return(ts)
 
 def generateOscilloscopePlot(gui, interrogator, laserNum, firstChann, lastChann):
     

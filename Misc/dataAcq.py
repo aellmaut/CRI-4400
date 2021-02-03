@@ -26,10 +26,10 @@ def getData(gui, firstChann, lastChann, recLen, laserNum):
     channOffset = firstChann - 1
     if (8 * math.floor(channOffset/8) != channOffset):
         channOffset = 8 * math.floor(channOffset/8)
-    # Number of recorded channels needs to be a multiple of 16
+    # Number of recorded channels needs to be a multiple of 32
     postTriggerSamples = lastChann - channOffset
-    if math.fmod(postTriggerSamples, 16) != 0:
-        postTriggerSamples = 16 * math.ceil(postTriggerSamples/16)
+    if math.fmod(postTriggerSamples, 32) != 0:
+        postTriggerSamples = 32 * math.ceil(postTriggerSamples/32)
     firstChann = channOffset + 1
     lastChann = postTriggerSamples + channOffset
     
@@ -128,10 +128,10 @@ def storeDataToDisk(gui, firstChann, lastChann, recLen, laserNum):
     channOffset = firstChann - 1
     if (8 * math.floor(channOffset/8) != channOffset):
         channOffset = 8 * math.floor(channOffset/8)
-    # Number of recorded channels needs to be a multiple of 16
+    # Number of recorded channels needs to be a multiple of 32
     postTriggerSamples = lastChann - channOffset
-    if math.fmod(postTriggerSamples, 16) != 0:
-        postTriggerSamples = 16 * math.ceil(postTriggerSamples/16)
+    if math.fmod(postTriggerSamples, 32) != 0:
+        postTriggerSamples = 32 * math.ceil(postTriggerSamples/32)
     firstChann = channOffset + 1
     lastChann = postTriggerSamples + channOffset
     
@@ -240,10 +240,10 @@ def getChannRange(firstChann, lastChann):
     channOffset = firstChann - 1
     if (8 * math.floor(channOffset/8) != channOffset):
         channOffset = 8 * math.floor(channOffset/8)
-    # Number of recorded channels needs to be a multiple of 16
+    # Number of recorded channels needs to be a multiple of 32
     postTriggerSamples = lastChann - channOffset
-    if math.fmod(postTriggerSamples, 16) != 0:
-        postTriggerSamples = 16 * math.ceil(postTriggerSamples/16)
+    if math.fmod(postTriggerSamples, 32) != 0:
+        postTriggerSamples = 32 * math.ceil(postTriggerSamples/32)
     firstChann = channOffset + 1
     lastChann = postTriggerSamples + channOffset
     
