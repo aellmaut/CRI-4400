@@ -180,40 +180,52 @@ def launchAmplifierSetup(gui, interrogator, launchEDFAcurr, firstChann, lastChan
     
     # Recording parameters
     laserNum = 3 # 1 = laser 1; 2 = laser 2; 3 = laser 1 & 2
-    recLen = 0.1 # Record length in seconds per data acquisition run
+    recLen = 0.2 # Record length in seconds per data acquisition run
     currentStepSize = 10 # Increase in launch amplifier current per iteration
+    channs = 200 # Number of DAS channels at fiber end used for launch EDFA current optimization
     
-    # Iteratively increase launch EDFA current until backscatter energy over last 200 channels decays
+    # Iteratively increase launch EDFA current until backscatter energy over last 100 channels decays
     success = 0
     IQrad_arr = []
     launchEDFAcurr_arr = []
+    IQ = []
+    # Create 2xN lists which will hold the IQ data of both lasers
+    for i in range(2):
+        laser = []
+        IQ.append(laser)
+        IQrad_arr.append(laser)
+    # Do until backscatter energy over last 'channs' channels decays for one of the lasers
     while success == 0:       
         # Acquire data
-        [data, firstChann, lastChann] = dataAcq.getData(gui, firstChann, lastChann, recLen, laserNum)
-        # Extract I/Q data from data buffer
-        # If both lasers are used for calibration, the maximum I and Q value of the two lasers is used
-        if laserNum == 3:
-            # Take maximum I/Q value 
-            I = np.maximum(data[interrogator.boardNum][:, 0:-4:4], data[interrogator.boardNum][:,2:-2:4])
-            Q = np.maximum(data[interrogator.boardNum][:, 1:-3:4], data[interrogator.boardNum][:,3:-1:4])
-        else:
-            I = data[interrogator.boardNum][:,0:-2:2]
-            Q = data[interrogator.boardNum][:,1:-1:2]
-        # Calculate the median I/Q radius over time for each channel
-        IQrad = np.median(np.sqrt(I*I+Q*Q), axis=0)
-        # Calculate the rms value over last 200 channels
-        IQrad_arr.append(np.sqrt(np.mean(IQrad[-200:-1]**2)))
-        launchEDFAcurr_arr.append(launchEDFAcurr)
+        [data, firstChann, lastChann_new] = dataAcq.getData(gui, lastChann-channs, lastChann, recLen, laserNum)
+        # Extract mean I/Q radii for both lasers from data buffer
+        IQ[0] = np.mean(data[interrogator.boardNum][:, 0:-4:4]*data[interrogator.boardNum][:, 0:-4:4]+data[interrogator.boardNum][:, 1:-3:4]*data[interrogator.boardNum][:, 1:-3:4], axis=0)
+        IQ[1] = np.mean(data[interrogator.boardNum][:, 2:-2:4]*data[interrogator.boardNum][:, 2:-2:4]+data[interrogator.boardNum][:, 3:-1:4]*data[interrogator.boardNum][:, 3:-1:4], axis=0)
+        # Calculate the rms value over last 'channs' channels for each laser
+        launchEDFAcurr_arr.append(launchEDFAcurr)        
         gui.progressBar.step(0.005)
         gui.update()
-        print('Optical Backscatter Energy: ' + str(IQrad_arr[-1]))
-        # Exit while loop if IQ radius rms value over last 200 channels is below the rms value of 15 iterations earlier
-        if (len(IQrad_arr) > 15 and IQrad_arr[-1] < IQrad_arr[-16]) or launchEDFAcurr == 1300:
-            success = 1
-            plt.plot(launchEDFAcurr_arr, IQrad_arr, 'x-')
-            ind = IQrad_arr.index(max(IQrad_arr))
-            optLaunchEDFAcurr, = plt.plot(launchEDFAcurr_arr[ind], IQrad_arr[ind], '-o', ms=12, lw=2, alpha=0.7, mfc='orange', label = 'Optimal Launch EDFA Current: ' + str(launchEDFAcurr_arr[ind]) + ' mA')
-            plt.legend(handles=[optLaunchEDFAcurr])
+        for i in range(2):
+            IQrad_arr[i].append(np.sqrt(np.median(IQ[i][(lastChann-lastChann_new-channs):(lastChann-lastChann_new-1)]*IQ[i][(lastChann-lastChann_new-channs):(lastChann-lastChann_new-1)])))
+            print('Optical Backscatter Energy - Laser ' + str(i+1) + ': ' + str(IQrad_arr[i][-1]*1000))
+            # Exit while loop if IQ radius rms value over last 'channs' channels is below the rms value of 15 iterations earlier
+            if (len(IQrad_arr[i]) > 15 and IQrad_arr[i][-1] < IQrad_arr[i][-16]) or launchEDFAcurr == 1300:
+                success = 1
+        if success == 1:
+            # Create color palette
+            colorMap = plt.get_cmap('Set1')
+            ind = []
+            for i in range(2):
+                ind.append(IQrad_arr[i].index(max(IQrad_arr[i])))
+                plt.plot(launchEDFAcurr_arr, IQrad_arr[i], 'x-', color=colorMap(i), linewidth=1)
+            laser = ind.index(min(ind))
+            plt.plot(launchEDFAcurr_arr, IQrad_arr[laser], 'x-', color=colorMap(laser), linewidth=3)
+            plt.plot(launchEDFAcurr_arr[ind[laser]], IQrad_arr[laser][ind[laser]], '-o', ms=12, lw=2, alpha=0.7, mfc='orange')
+            xmin, xmax, ymin, ymax = plt.axis()
+            plt.text(xmin+5, ymax*1.1, 'Optimal Launch EDFA Current: ' + str(launchEDFAcurr_arr[ind[laser]]) + ' mA', horizontalalignment='left', verticalalignment='center', fontweight='bold')
+            plt.ylim((ymin, ymax*1.2))
+            plt.xlim((xmin, xmax+50))
+            plt.legend(('Laser 1', 'Laser 2'), loc='upper right')
             plt.title(interrogator.name + ' Launch Amplifier Setup Result: GL ' + str(interrogator.gaugeLength) + 'm', fontweight= 'bold')
             plt.xlabel('Launch EDFA Current (mA)')
             plt.ylabel('Optical Backscatter Energy')
@@ -225,7 +237,7 @@ def launchAmplifierSetup(gui, interrogator, launchEDFAcurr, firstChann, lastChan
             launchEDFAcurr += currentStepSize
             interrogator.setLaunchEDFA(launchEDFAcurr)
         
-    return(launchEDFAcurr_arr[ind])
+    return(launchEDFAcurr_arr[ind[laser]])
         
 # Function calculates ideal receive EDFA current
 def receiveAmplifierSetup(gui, interrogator, firstChann, lastChann):
@@ -482,9 +494,6 @@ def detectFiberEnd_fine(gui, firstChann, lastChann):
         else:
             n = n + 1
     
-    
-
-
     # Disable dither
     for interrogator in gui.InterrogatorHandle.interrogators:
         interrogator.disableDither()
