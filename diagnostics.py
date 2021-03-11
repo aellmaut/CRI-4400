@@ -83,21 +83,21 @@ def AcousticNoiseFloorTest(gui):
         gui.diagnostics.acousticNoiseFloor.channRange = [[401, 700], [2301, 2600], [4201, 4500]]
 
         # Initialize matrix holding acoustic noise floor results
-        noiseFloorMat = [[0,0,0], [0,0,0],[0,0,0]]
+        medianNoiseFloor = [[0,0,0], [0,0,0],[0,0,0]]
         
         for i in range(0,len(gui.diagnostics.acousticNoiseFloor.channRange)):
-            noiseFloorMat[i] = getAcousticNoiseFloor_SEAFOM(gui, gui.diagnostics.acousticNoiseFloor.testDur, gui.diagnostics.acousticNoiseFloor.channRange[i], gui.diagnostics.acousticNoiseFloor.freqRange)
+            medianNoiseFloor[i] = getAcousticNoiseFloor_SEAFOM(gui, gui.diagnostics.acousticNoiseFloor.testDur, gui.diagnostics.acousticNoiseFloor.channRange[i], gui.diagnostics.acousticNoiseFloor.freqRange)
 
             print('\n')
             print('Channel Range: ' + str(gui.diagnostics.acousticNoiseFloor.channRange[i][0]) + ':' + str(gui.diagnostics.acousticNoiseFloor.channRange[i][1]))
-            print('Acoustic Noise Floor - Laser 1:   ' + str(noiseFloorMat[i][0]) + 'dB')
-            print('Acoustic Noise Floor - Laser 2:   ' + str(noiseFloorMat[i][1]) + 'dB')
-            print('Acoustic Noise Floor - Laser 1+2: ' + str(noiseFloorMat[i][2]) + 'dB')
+            print('Acoustic Noise Floor - Laser 1:   ' + str(medianNoiseFloor[i][0]) + 'dB')
+            print('Acoustic Noise Floor - Laser 2:   ' + str(medianNoiseFloor[i][1]) + 'dB')
+            print('Acoustic Noise Floor - Laser 1+2: ' + str(medianNoiseFloor[i][2]) + 'dB')
 
             gui.textWindow.insert(tk.END, '\nChannel Range: ' + str(gui.diagnostics.acousticNoiseFloor.channRange[i][0]) + ':' + str(gui.diagnostics.acousticNoiseFloor.channRange[i][1]) + '\n')
-            gui.textWindow.insert(tk.END, 'Acoustic Noise Floor - Laser 1:   {0:.2f} dB\n'.format(noiseFloorMat[i][0]))
-            gui.textWindow.insert(tk.END, 'Acoustic Noise Floor - Laser 2:   {0:.2f} dB\n'.format(noiseFloorMat[i][1]))
-            gui.textWindow.insert(tk.END, 'Acoustic Noise Floor - Laser 1+2: {0:.2f} dB\n'.format(noiseFloorMat[i][2]))
+            gui.textWindow.insert(tk.END, 'Acoustic Noise Floor - Laser 1:   {0:.2f} dB\n'.format(medianNoiseFloor[i][0]))
+            gui.textWindow.insert(tk.END, 'Acoustic Noise Floor - Laser 2:   {0:.2f} dB\n'.format(medianNoiseFloor[i][1]))
+            gui.textWindow.insert(tk.END, 'Acoustic Noise Floor - Laser 1+2: {0:.2f} dB\n'.format(medianNoiseFloor[i][2]))
             gui.progressBar.update()
             gui.textWindow.see(tk.END)
 
@@ -191,7 +191,7 @@ def getAcousticNoiseFloor_SEAFOM(gui, testDur, channRange, freqRange):
     channOffset = [channRange[0] - firstChann, lastChann- channRange[1]]
     noiseFloorMat = [0, 0, 0]
     
-    strainDataFFT_avg = np.zeros((3, int(gui.InterrogatorHandle.interrogators[gui.popupMenu_clockMode.current()].fs/2)))
+    strainDataFFT_avg = np.zeros((3, int(gui.InterrogatorHandle.fs/2)))
 
     for i in range(0,testDur):
 
@@ -201,36 +201,40 @@ def getAcousticNoiseFloor_SEAFOM(gui, testDur, channRange, freqRange):
 
         # Acquire data - Laser 1 & 2
         [data, firstChann, lastChann] = dataAcq.getData(gui, firstChann, lastChann, recLen, 3)
-        dataSize = data.shape
+        dataSize = data[0].shape
         
-        I1 = data[:, (channOffset[0]*4):(dataSize[1]-3-channOffset[1]*4):4]
-        Q1 = data[:, (1+channOffset[0]*4):(dataSize[1]-2-channOffset[1]*4):4]
-        I2 = data[:, (2+channOffset[0]*4):(dataSize[1]-1-channOffset[1]*4):4]
-        Q2 = data[:, (3+channOffset[0]*4):(dataSize[1]-channOffset[1]*4):4]
+         # Extract I/Q data from data buffer for each laser
+        I = []
+        Q = []
+        for j in range(len(data)):
+            I.append(data[j][:, (channOffset[0]*4):(dataSize[1]-3-channOffset[1]*4):4])
+            I.append(data[j][:, (2+channOffset[0]*4):(dataSize[1]-1-channOffset[1]*4):4])
+            Q.append(data[j][:, (1+channOffset[0]*4):(dataSize[1]-2-channOffset[1]*4):4])
+            Q.append(data[j][:, (3+channOffset[0]*4):(dataSize[1]-channOffset[1]*4):4])
         
-        dataSize = I1.shape
+        dataSize = I[0].shape
         for j in range(0,dataSize[1]):
             
             # Noise FLoor - Laser 1
-            phaseData = IQtoPhase.getPhaseData(I1[:,j],Q1[:,j])
+            phaseData = IQtoPhase.getPhaseData(I[0][:,j],Q[0][:,j])
             # Calculate the FFT according to the SEAFOM standard
-            [phaseDataFFT, F] = transforms.seafom_fft(phaseData, gui.InterrogatorHandle.interrogators[gui.popupMenu_clockMode.current()].fs)
+            [phaseDataFFT, F] = transforms.seafom_fft(phaseData, gui.InterrogatorHandle.fs)
             # Convert from phase to pico strain
             strainDataFFT = IQtoPhase.phaseToStrain(phaseDataFFT, refractiveInd, gui.InterrogatorHandle.interrogators[gui.popupMenu_clockMode.current()].laserITU[0], gui.InterrogatorHandle.interrogators[gui.popupMenu_clockMode.current()].gaugeLength)
             strainDataFFT_avg[0,:] = strainDataFFT_avg[0,:] + strainDataFFT
 
             # Noise FLoor - Laser 2
-            phaseData = IQtoPhase.getPhaseData(I2[:,j],Q2[:,j])
+            phaseData = IQtoPhase.getPhaseData(I[1][:,j],Q[1][:,j])
             # Calculate the FFT according to the SEAFOM standard
-            [phaseDataFFT, F] = transforms.seafom_fft(phaseData, gui.InterrogatorHandle.interrogators[gui.popupMenu_clockMode.current()].fs)
+            [phaseDataFFT, F] = transforms.seafom_fft(phaseData, gui.InterrogatorHandle.fs)
             # Convert from phase to pico strain
             strainDataFFT = IQtoPhase.phaseToStrain(phaseDataFFT, refractiveInd, gui.InterrogatorHandle.interrogators[gui.popupMenu_clockMode.current()].laserITU[1], gui.InterrogatorHandle.interrogators[gui.popupMenu_clockMode.current()].gaugeLength)
             strainDataFFT_avg[1,:] = strainDataFFT_avg[1,:] + strainDataFFT
 
             # Noise FLoor - Laser 1 & 2
-            phaseData = IQtoPhase.getWeightedPhaseData(I1[:,j],Q1[:,j], I2[:,j],Q2[:,j])
+            phaseData = IQtoPhase.getWeightedPhaseData(I, Q, j)
             # Calculate the FFT according to the SEAFOM standard
-            [phaseDataFFT, F] = transforms.seafom_fft(phaseData, gui.InterrogatorHandle.interrogators[gui.popupMenu_clockMode.current()].fs)
+            [phaseDataFFT, F] = transforms.seafom_fft(phaseData, gui.InterrogatorHandle.fs)
             # Convert from phase to pico strain
             strainDataFFT = IQtoPhase.phaseToStrain(phaseDataFFT, refractiveInd, gui.InterrogatorHandle.interrogators[gui.popupMenu_clockMode.current()].laserITU[0], gui.InterrogatorHandle.interrogators[gui.popupMenu_clockMode.current()].gaugeLength)
             strainDataFFT_avg[2,:] = strainDataFFT_avg[2,:] + strainDataFFT
@@ -304,7 +308,7 @@ def generateFFTplots(gui, F, noiseFloor, channRange, medNoiseFloor):
     plt.grid('on')
     plt.title('Laser 1', fontsize=8)
     plt.setp(ax1.get_xticklabels(), visible=False)
-    plt.xlim(0, gui.InterrogatorHandle.interrogators[gui.popupMenu_clockMode.current()].fs/2)
+    plt.xlim(0, gui.InterrogatorHandle.fs/2)
     ax2 = plt.subplot(312)
     noiseFLoor_laser2_plt, = plt.plot(F, noiseFloor[1,:], color='C1', label='Median Noise Floor: {0:.2f} dB'.format(medNoiseFloor[1]))
     plt.legend(handles=[noiseFLoor_laser2_plt], fontsize=8)
@@ -312,7 +316,7 @@ def generateFFTplots(gui, F, noiseFloor, channRange, medNoiseFloor):
     plt.grid('on')
     plt.title('Laser 2', fontsize=8)
     plt.setp(ax2.get_xticklabels(), visible=False)
-    plt.xlim(0, gui.InterrogatorHandle.interrogators[gui.popupMenu_clockMode.current()].fs/2)
+    plt.xlim(0, gui.InterrogatorHandle.fs/2)
     ax3 = plt.subplot(313)
     noiseFloor_laser12_plt, = plt.plot(F, noiseFloor[2,:], color='C2', label='Median Noise Floor: {0:.2f} dB'.format(medNoiseFloor[2]))
     plt.legend(handles=[noiseFloor_laser12_plt], fontsize=8)
@@ -320,7 +324,7 @@ def generateFFTplots(gui, F, noiseFloor, channRange, medNoiseFloor):
     plt.xlabel('Frequency [Hz]')
     plt.grid('on')
     plt.title('Laser 1 & 2', fontsize=8)
-    plt.xlim(0, gui.InterrogatorHandle.interrogators[gui.popupMenu_clockMode.current()].fs/2)
+    plt.xlim(0, gui.InterrogatorHandle.fs/2)
     plt.suptitle('DAS Acoustic Noise Floor: Gauge Length = ' + str(gui.InterrogatorHandle.interrogators[gui.popupMenu_clockMode.current()].gaugeLength) + 'm' + ' (Channels ' + str(channRange[0]) + '-' + str(channRange[1]) + ')')
     gui.diagnostics.resultsPdf.savefig()
     plt.close()

@@ -66,7 +66,7 @@ class GUI(tk.Frame):
     # Thresholds for fiber sensing region detection
     thresh_sensingRegionGap = 200
     # Threshold for saturated channel ratio computation
-    thresh_saturatedChannRatio = 1 #0.02 # 0.2 for passive remote circulator scenario;
+    thresh_saturatedChannRatio = 0.02 # 0.2 for passive remote circulator scenario;
     # Handle to pdf file containing plots of calibration results
     calibResultsPdf = None
     
@@ -791,20 +791,35 @@ class GUI(tk.Frame):
         axs3.invert_yaxis()
         axs3.axis('off')
  
-        if len(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor) == 3: # Single DAS interrogator acquisition
+        # HAL internal Acoustic Noise Floor Procedure
+        if self.selectedDiagnosticsFormat.get() == 1: 
+
+            if len(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor) == 3: # Single DAS interrogator acquisition
+                diagnostics_results = [['Frequency Range:', str(self.diagnostics.acousticNoiseFloor.freqRange[0]) + ' Hz - ' + str(self.diagnostics.acousticNoiseFloor.freqRange[1]) + ' Hz'],
+                                       ['Channel Range:', str(self.diagnostics.acousticNoiseFloor.channRange[0][0]) + ':' + str(self.diagnostics.acousticNoiseFloor.channRange[0][1])],
+                                       ['Acoustic Noise Floor - Laser 1:', '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[0])],
+                                       ['Acoustic Noise Floor - Laser 2:', '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[1])],
+                                       ['Acoustic Noise Floor - Laser 1+2:', '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[2])]]
+            else: # Dual DAS interrogator acquisition
+                acousticNoiseFloorString_interrogator1 = '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[0]) + ' / ' + '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[1]) + ' / ' + '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[4])
+                acousticNoiseFloorString_interrogator2 = '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[2]) + ' / ' + '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[3]) + ' / ' + '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[5])
+                diagnostics_results = [['Frequency Range:', str(self.diagnostics.acousticNoiseFloor.freqRange[0]) + ' Hz - ' + str(self.diagnostics.acousticNoiseFloor.freqRange[1]) + ' Hz'],
+                                       ['Channel Range:', str(self.diagnostics.acousticNoiseFloor.channRange[0][0]) + ':' + str(self.diagnostics.acousticNoiseFloor.channRange[0][1])],
+                                       [self.InterrogatorHandle.interrogators[0].name + ' - Acoustic Noise Floor (Laser 1/2/1&2):', acousticNoiseFloorString_interrogator1],
+                                        [self.InterrogatorHandle.interrogators[1].name + ' - Acoustic Noise Floor (Laser 1/2/1&2):', acousticNoiseFloorString_interrogator2],
+                                       ['Acoustic Noise Floor - Laser 1-4:', '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[6])]]
+        
+        # SEAFOM Acoustic Noise Floor Procedure
+        else:
+            acousticNoiseFloorString_laser1 = '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[0][0]) + ' / ' + '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[1][0]) + ' / ' + '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[2][0])
+            acousticNoiseFloorString_laser2 = '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[0][1]) + ' / ' + '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[1][1]) + ' / ' + '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[2][1])
+            acousticNoiseFloorString_laser12 = '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[0][2]) + ' / ' + '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[1][2]) + ' / ' + '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[2][2])
             diagnostics_results = [['Frequency Range:', str(self.diagnostics.acousticNoiseFloor.freqRange[0]) + ' Hz - ' + str(self.diagnostics.acousticNoiseFloor.freqRange[1]) + ' Hz'],
-                                   ['Channel Range:', str(self.diagnostics.acousticNoiseFloor.channRange[0][0]) + ':' + str(self.diagnostics.acousticNoiseFloor.channRange[0][1])],
-                                   ['Acoustic Noise Floor - Laser 1:', '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[0])],
-                                   ['Acoustic Noise Floor - Laser 2:', '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[1])],
-                                   ['Acoustic Noise Floor - Laser 1+2:', '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[2])]]
-        else: # Dual DAS interrogator acquisition
-            acousticNoiseFloorString_interrogator1 = '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[0]) + ' / ' + '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[1]) + ' / ' + '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[4])
-            acousticNoiseFloorString_interrogator2 = '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[2]) + ' / ' + '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[3]) + ' / ' + '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[5])
-            diagnostics_results = [['Frequency Range:', str(self.diagnostics.acousticNoiseFloor.freqRange[0]) + ' Hz - ' + str(self.diagnostics.acousticNoiseFloor.freqRange[1]) + ' Hz'],
-                                   ['Channel Range:', str(self.diagnostics.acousticNoiseFloor.channRange[0][0]) + ':' + str(self.diagnostics.acousticNoiseFloor.channRange[0][1])],
-                                   [self.InterrogatorHandle.interrogators[0].name + ' - Acoustic Noise Floor (Laser 1/2/1&2):', acousticNoiseFloorString_interrogator1],
-                                    [self.InterrogatorHandle.interrogators[1].name + ' - Acoustic Noise Floor (Laser 1/2/1&2):', acousticNoiseFloorString_interrogator2],
-                                   ['Acoustic Noise Floor - Laser 1-4:', '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[6])]]
+                                       ['Channel Range:', str(self.diagnostics.acousticNoiseFloor.channRange[0][0]) + ':' + str(self.diagnostics.acousticNoiseFloor.channRange[0][1])],
+                                       ['Acoustic Noise Floor - Laser 1 (Region 1/2/3):', acousticNoiseFloorString_laser1],
+                                       ['Acoustic Noise Floor - Laser 2 (Region 1/2/3):', acousticNoiseFloorString_laser2],
+                                       ['Acoustic Noise Floor - Laser 1+2 (Region 1/2/3):', acousticNoiseFloorString_laser12]]
+
         axs3.table(cellText=diagnostics_results,  rowLoc='center', colWidths=[.5,.5], colLoc='center', loc='center', bbox=[0,0.33, 1, 0.62])
 
         self.diagnostics.resultsPdf.savefig()
