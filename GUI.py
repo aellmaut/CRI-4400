@@ -82,7 +82,7 @@ class GUI(tk.Frame):
             # Default channel ranges for acoustic noise floor test (HAL internal)
             channRange = [[4000, 4500]]
             # Test Duration for acoustic noise floor test
-            testDur = 30
+            testDur = 10
             # Frequency Range for noise floor calculation
             freqRange = [4000, 5000]
             # Variable holding acoustic noise floor
@@ -815,7 +815,7 @@ class GUI(tk.Frame):
             acousticNoiseFloorString_laser2 = '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[0][1]) + ' / ' + '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[1][1]) + ' / ' + '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[2][1])
             acousticNoiseFloorString_laser12 = '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[0][2]) + ' / ' + '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[1][2]) + ' / ' + '{0:.2f} dB'.format(self.diagnostics.acousticNoiseFloor.medAcousticNoiseFloor[2][2])
             diagnostics_results = [['Frequency Range:', str(self.diagnostics.acousticNoiseFloor.freqRange[0]) + ' Hz - ' + str(self.diagnostics.acousticNoiseFloor.freqRange[1]) + ' Hz'],
-                                       ['Channel Range:', str(self.diagnostics.acousticNoiseFloor.channRange[0][0]) + ':' + str(self.diagnostics.acousticNoiseFloor.channRange[0][1])],
+                                       ['DAS Channel Regions:', str(self.diagnostics.acousticNoiseFloor.channRange[0][0]) + ':' + str(self.diagnostics.acousticNoiseFloor.channRange[0][1]) + ' / ' + str(self.diagnostics.acousticNoiseFloor.channRange[1][0]) + ':' + str(self.diagnostics.acousticNoiseFloor.channRange[1][1]) + ' / ' + str(self.diagnostics.acousticNoiseFloor.channRange[2][0]) + ':' + str(self.diagnostics.acousticNoiseFloor.channRange[2][1])],
                                        ['Acoustic Noise Floor - Laser 1 (Region 1/2/3):', acousticNoiseFloorString_laser1],
                                        ['Acoustic Noise Floor - Laser 2 (Region 1/2/3):', acousticNoiseFloorString_laser2],
                                        ['Acoustic Noise Floor - Laser 1+2 (Region 1/2/3):', acousticNoiseFloorString_laser12]]

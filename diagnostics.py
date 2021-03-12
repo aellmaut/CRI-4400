@@ -301,6 +301,7 @@ def generateNoiseFloorHistograms(gui, name, noiseFloor, laserNum):
 # Function that generates the FFT plots for laser 1, laser 2 and laser 1+2 in pico strain per rt-Hz
 def generateFFTplots(gui, F, noiseFloor, channRange, medNoiseFloor):
 
+    # Laser 1
     ax1 = plt.subplot(311)
     noiseFloor_laser1_plt, = plt.plot(F, noiseFloor[0,:], color='C0', label='Median Noise Floor: {0:.2f} dB'.format(medNoiseFloor[0]))
     plt.legend(handles=[noiseFloor_laser1_plt], fontsize=8)
@@ -308,7 +309,11 @@ def generateFFTplots(gui, F, noiseFloor, channRange, medNoiseFloor):
     plt.grid('on')
     plt.title('Laser 1', fontsize=8)
     plt.setp(ax1.get_xticklabels(), visible=False)
+    plt.xscale('log')
     plt.xlim(0, gui.InterrogatorHandle.fs/2)
+    
+
+    # Laser 2
     ax2 = plt.subplot(312)
     noiseFLoor_laser2_plt, = plt.plot(F, noiseFloor[1,:], color='C1', label='Median Noise Floor: {0:.2f} dB'.format(medNoiseFloor[1]))
     plt.legend(handles=[noiseFLoor_laser2_plt], fontsize=8)
@@ -316,7 +321,11 @@ def generateFFTplots(gui, F, noiseFloor, channRange, medNoiseFloor):
     plt.grid('on')
     plt.title('Laser 2', fontsize=8)
     plt.setp(ax2.get_xticklabels(), visible=False)
+    plt.xscale('log')
     plt.xlim(0, gui.InterrogatorHandle.fs/2)
+    
+
+    # Laser 1+2
     ax3 = plt.subplot(313)
     noiseFloor_laser12_plt, = plt.plot(F, noiseFloor[2,:], color='C2', label='Median Noise Floor: {0:.2f} dB'.format(medNoiseFloor[2]))
     plt.legend(handles=[noiseFloor_laser12_plt], fontsize=8)
@@ -324,7 +333,10 @@ def generateFFTplots(gui, F, noiseFloor, channRange, medNoiseFloor):
     plt.xlabel('Frequency [Hz]')
     plt.grid('on')
     plt.title('Laser 1 & 2', fontsize=8)
+    plt.xscale('log')
     plt.xlim(0, gui.InterrogatorHandle.fs/2)
+    
+
     plt.suptitle('DAS Acoustic Noise Floor: Gauge Length = ' + str(gui.InterrogatorHandle.interrogators[gui.popupMenu_clockMode.current()].gaugeLength) + 'm' + ' (Channels ' + str(channRange[0]) + '-' + str(channRange[1]) + ')')
     gui.diagnostics.resultsPdf.savefig()
     plt.close()
